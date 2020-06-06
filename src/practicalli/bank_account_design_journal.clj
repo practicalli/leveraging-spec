@@ -89,17 +89,6 @@
 ;; Using a specification for the argument and return value for a funciton
 ;; makes the documentation very explicit
 
-;; Writing a function to
-(defn register-account-holder
-  "Register a new customer with the bank
-  Arguments:
-  - :practicalli.bank-account-design-journal/customer-details specification
-  Return:
-  - :practicalli.bank-account-design-journal/account-holder specification"
-  [customer-details]
-  ;; Return a data structure that matches the ::account-holder specification
-  customer-details)
-
 ;; run the tests
 ;; fails as the account-id is not added
 
@@ -112,10 +101,7 @@
 
 (defn register-account-holder
   "Register a new customer with the bank
-  Arguments:
-  - :practicalli.bank-account-design-journal/customer-details specification
-  Return:
-  - :practicalli.bank-account-design-journal/account-holder specification"
+  "
   [customer-details]
   ;; Return a data structure that matches the ::account-holder specification
   (assoc customer-details :account-id (rand-int 1000000))
@@ -156,7 +142,7 @@
                          %)))
 
 ;; These specs are not very useful - refactor
-(spec/def ::home-address string?)
+(spec/def ::residential-address string?)
 (spec/def ::social-secuirty-id string?)
 
 ;; NOTE: https://github.com/nikortel/ssn is a library for
@@ -223,7 +209,7 @@
 (uuid? (java.util.UUID/randomUUID))
 ;; => true
 
-;; (uuid? #uuid " ")
+(uuid? #uuid " ")
 ;; Invalid uuid string
 
 ;; Combine ::account-id with the ::customer-details spec to make ::account-holder spec
@@ -338,9 +324,10 @@
 
 ;; Or what seems to be more hacky is to have both `req` and `:req-un` in the spec/keys
 (spec/def ::customer-details
-  (spec/keys
-    :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id]
-    :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
+  (or (spec/keys
+        :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id])
+      (spec/keys
+        :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id])))
 
 
 ;; Create a spec fdef for the register-account-holder function
@@ -349,7 +336,7 @@
 
 (spec/fdef register-account-holder
   :args :practicalli.bank-account-spec/customer-details
-  :ret :practicalli.bank-account-spec/account-id)
+  :ret :practicalli.bank-account-spec/account-holder)
 
 
 ;; ?? what :fn should be defined to express the relationship between these two

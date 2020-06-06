@@ -21,7 +21,7 @@
 
 (spec/fdef register-account-holder
   :args :practicalli.bank-account-spec/customer-details
-  :ret :practicalli.bank-account-spec/account-id)
+  :ret :practicalli.bank-account-spec/account-holder)
 
 
 (spec-test/instrument `register-account-holder)
@@ -36,3 +36,10 @@
                           :email-address       "jenny@jetpack.org"
                           :residential-address "42 meaning of life street"
                           :postal-code         "AB3 0EF"})
+
+(register-account-holder {:first-name          "Jenny"
+                          :last-name           "Jetpack"
+                          :email-address       "jenny@jetpack.org"
+                          :residential-address "42 meaning of life street"
+                          :postal-code         "AB3 0EF"
+                          :social-security-id  "123456789"})
