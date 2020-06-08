@@ -17,8 +17,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; A customer will need several pieces of information to create a bank account
 (def customer-mock
-  {:firstname           "Jenny"
-   :lastname            "Jetpack"
+  {:first-name          "Jenny"
+   :last-name           "Jetpack"
    :email-address       "jenny@jetpack.org"
    :residential-address "42 meaning of life street, Earth"
    :postal-code         "AB3 0EF"})
@@ -53,7 +53,7 @@
 ;; Define some mock data
 (def customer-mock
   {:first-name          "Jenny"
-   :las-tname           "Jetpack"
+   :last-name           "Jetpack"
    :email-address       "jenny@jetpack.org"
    :residential-address "42 meaning of life street, Earth"
    :postal-code         "AB3 0EF"
