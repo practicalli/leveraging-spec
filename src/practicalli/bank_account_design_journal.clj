@@ -25,52 +25,13 @@
 
 ;; An account holder would have the same information, but also have a unquie id with the bank.
 
-;; Generating a random account number
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; http://practicalli.github.io/clojure/reference/tagged-literals/uuid.html
-
-(java.util.UUID/randomUUID)
-;; => #uuid "44f3ffd7-6702-4b8a-af25-11bee4b5ec4f"
-
-
-;; A uuid is a string of numbers that has the #uuid tag as meta data,
-;; adding to the meaning of the string.
-
-
-;; Write a test (TDD style)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; First we would write a test to define what the register function should do
-
-;; Including clojure.set to use its functions to define a test
-(require '[clojure.test :refer [deftest is testing]])
-
-;; Define some mock data
-(def customer-mock
-  {:firstname           "Jenny"
-   :lastname            "Jetpack"
-   :email-address       "jenny@jetpack.org"
-   :residential-address "42 meaning of life street, Earth"
-   :postal-code         "AB3 0EF"})
-
-(def account-holder-mock
-  {:acount-id           #uuid "97bda55b-6175-4c39-9e04-7c0205c709dc"
-   :firstname           "Jenny"
-   :lastname            "Jetpack"
-   :email-address       "jenny@jetpack.org"
-   :residential-address "42 meaning of life street, Earth"
-   :postal-code         "AB3 0EF"})
-
-;; Write our first tests (which will fail at first)
-
-(deftest register-account-holder-test
-  (testing "Basic registration - happy path"
-    (is (= (keys (register-account-holder customer-mock))
-           (keys (customer-mock))))))
-
 
 ;;  Write skeleton of function for our test to call
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The skeleton takes the argument and returns it.
+;; It is common for Clojure to take a map and return a map
+;; so the signature of the function will probably remain unchanged,
+;; with the body of the function updated
 
 (defn register-account-holder
   "Register a new customer with the bank
@@ -81,42 +42,100 @@
   [customer-details]
   customer-details)
 
-;; run the test and confirm its failing
 
-
-;; Define function with a spec in mind
+;; Write a test
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Using a specification for the argument and return value for a funciton
-;; makes the documentation very explicit
+;; A test to define what the register function should do
 
-;; run the tests
-;; fails as the account-id is not added
+;; Including clojure.set to use its functions to define a test
+(require '[clojure.test :refer [deftest is testing]])
 
-;; update the function to assoc an account id, for now we will just use a random number
-(rand-int 1000000)
+;; Define some mock data
+(def customer-mock
+  {:first-name          "Jenny"
+   :las-tname           "Jetpack"
+   :email-address       "jenny@jetpack.org"
+   :residential-address "42 meaning of life street, Earth"
+   :postal-code         "AB3 0EF"
+   :social-security-id  "123456789"})
 
-;; of the form, but using the customer-details as the hash-map
-(assoc {} :account-id (rand-int 1000000))
+;; account is a customer with a bank account id added
+(def account-holder-mock
+  {:acount-id           #uuid "97bda55b-6175-4c39-9e04-7c0205c709dc"
+   :first-name          "Jenny"
+   :last-name           "Jetpack"
+   :email-address       "jenny@jetpack.org"
+   :residential-address "42 meaning of life street, Earth"
+   :postal-code         "AB3 0EF"
+   :social-security-id  "123456789"})
 
+;; Write the first tests checking keys can be compared
+#_(deftest register-account-holder-test
+    (testing "Basic registration - happy path"
+      (is (= (keys (register-account-holder customer-mock))
+             (keys (customer-mock))))))
 
-(defn register-account-holder
-  "Register a new customer with the bank
-  "
-  [customer-details]
-  ;; Return a data structure that matches the ::account-holder specification
-  (assoc customer-details :account-id (rand-int 1000000))
-  )
+;; run the test and confirm its failing
+;; fails because keys function returns a sequence of values
+;; and even though sequences have the same values they may not be in the same order
+;; so the logic of the test fails
 
-
-;; run tests
-;; fails because lists have the same values but not in the same sequence
-
-;; convert lists into sets and compare, sets are unordered
+;; convert the sequences returned by keys into sets and compare,
+;; sets are unordered as its the values they contain that have significance
 
 (deftest register-account-holder-test
   (testing "Basic registration - happy path"
     (is (= (set (keys (register-account-holder customer-mock)))
            (set (keys account-holder-mock))))))
+
+;; run the tests
+;; fails as the account-id is not added
+
+
+;; Generating a random account number
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Java has a method on the UUID class to generate a random universally unique id
+(java.util.UUID/randomUUID)
+;; => #uuid "44f3ffd7-6702-4b8a-af25-11bee4b5ec4f"
+
+;; A uuid is a string of numbers that has the #uuid tag as meta data,
+;; adding to the meaning of the string.
+;; http://practicalli.github.io/clojure/reference/tagged-literals/uuid.html
+
+;; Using tag literals makes it simpler to check for types
+
+(type (java.util.UUID/randomUUID))
+;; => java.util.UUID
+
+;; Test to see a value is a uuid
+(uuid? (java.util.UUID/randomUUID))
+;; => true
+
+;; just putting the uuid tag in front of a string does not make a uuid,
+;; the string needs to conform to the uuid type.
+(uuid? #uuid " ")
+;; Invalid uuid string
+
+
+;; Update register-account-holder to return an id
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; The register-account-holder takes a map of customer details
+;; create a new hash-map from customer details, adding a new key for account id
+
+(assoc {} :account-id (java.util.UUID/randomUUID))
+
+
+(defn register-account-holder
+  "Register a new customer with the bank
+  Arguments:
+  - hash-map of customer-details
+  Return:
+  - hash-map of an account-holder (adds account id)"
+
+  [customer-details]
+
+  (assoc customer-details :account-id (java.util.UUID/randomUUID)))
 
 ;; run tests
 ;; test passes
