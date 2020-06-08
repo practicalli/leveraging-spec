@@ -5,27 +5,40 @@
 
 ;; Mock data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Using practicalli.bank-account-spec specifications
+;; #:practicalli.bank-account-spec qualifies all keywords in the hash-map
+;; so they are checked against the correct specification.
+
 (def customer-mock
-  {:firstname           "Jenny"
-   :lastname            "Jetpack"
+  #:practicalli.bank-account-spec
+  {:first-name          "Jenny"
+   :last-name           "Jetpack"
    :email-address       "jenny@jetpack.org"
    :residential-address "42 meaning of life street, Earth"
-   :postal-code         "AB3 0EF"})
+   :postal-code         "AB3 0EF"
+   :social-security-id  "123456789"})
 
-(def account-holder-mock
-  #:practicalli.bank-account-spec {:account-id          #uuid "97bda55b-6175-4c39-9e04-7c0205c709dc"
-                                   :firstname           "Jenny"
-                                   :lastname            "Jetpack"
-                                   :email-address       "jenny@jetpack.org"
-                                   :residential-address "42 meaning of life street, Earth"
-                                   :postal-code         "AB3 0EF"
-                                   :social-security-id  "123456789"})
+
+(def account-holder
+  #:practicalli.bank-account-spec
+  {:first-name          "Jenny"
+   :last-name           "Jetpack"
+   :email-address       "jenny@jetpack.org"
+   :residential-address "42 meaning of life street, Earth"
+   :postal-code         "AB3 0EF"
+   :social-security-id  "123456789"
+   :account-id          (java.util.UUID/randomUUID)})
+
+
+;; Unit Tests
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (deftest register-account-holder-test
   (testing "Basic registration - happy path"
     (is (= (set (keys (SUT/register-account-holder customer-mock)))
-           (set (keys account-holder-mock))))
+           (set (keys account-holder))))
 
     (is (spec/valid? :practicalli.bank-account-spec/account-holder
-                     (SUT/register-account-holder customer-mock) ))
+                     (SUT/register-account-holder customer-mock) ) )
     ))
