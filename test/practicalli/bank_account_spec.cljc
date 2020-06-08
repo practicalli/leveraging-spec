@@ -29,7 +29,7 @@
 (spec/def ::social-security-id (or ::social-security-id-uk
                                    ::social-security-id-usa))
 
-
+;; Composition of the individual customer details into a hash-map
 (spec/def ::customer-details
   (spec/keys
     :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
@@ -41,10 +41,17 @@
 
 (spec/def ::account-id uuid?)
 
-;; Combine ::account-id with the ::customer-details spec to make ::account-holder spec
+;; Combine ::account-id with the individual specifications that make up ::customer-details spec
+;; creating a flat hash-map for an ::account-holder specification
+
 (spec/def ::account-holder
   (spec/keys
-    :req-un [::account-id ::customer-details]))
+    :req [::account-id ::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
+
+
+#_(spec/def ::account-holder-hierachy
+    (spec/keys
+      :req [::account-id ::customer-details]))
 
 
 
@@ -61,7 +68,7 @@
 ;; Instrument function definition specifications
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(spec-test/instrument `register-account-holder)
+#_(spec-test/instrument `register-account-holder)
 
 
 
@@ -71,43 +78,115 @@
 
 ;; Test data
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(spec/valid? ::first-name "Jenny")
+(comment
 
-(spec/valid? ::residential-address "42 meaning of life street")
+  ;; auto-resolution of keyworks only works in the
+  ;; practicalli.bank-account-spec namespace
+
+  (spec/valid? ::first-name "Jenny")
+  ;; => true
+
+  (spec/valid? ::residential-address "42 meaning of life street")
+  ;; => true
 
 
-(spec/valid? :practicalli.bank-account-spec/customer-details
-             {:first-name          "Jenny"
-              :last-name           "Jetpack"
-              :email-address       "jenny@jetpack.org"
-              :residential-address "42 meaning of life street"
-              :postal-code         "AB3 0EF"
-              :social-security-id  "123456789"}  )
+  (spec/valid? ::customer-details
+               #::{:first-name          "Jenny"
+                   :last-name           "Jetpack"
+                   :email-address       "jenny@jetpack.org"
+                   :residential-address "42 meaning of life street"
+                   :postal-code         "AB3 0EF"
+                   :social-security-id  "123456789"}  )
+  ;; => true
+
+  (spec/valid? ::customer-details
+               {::first-name          "Jenny"
+                ::last-name           "Jetpack"
+                ::email-address       "jenny@jetpack.org"
+                ::residential-address "42 meaning of life street"
+                ::postal-code         "AB3 0EF"
+                ::social-security-id  "123456789"}  )
+  ;; => true
+
+
+  (spec/valid? ::customer-details
+               #::{:first-name          "Jenny"
+                   :last-name           "Jetpack"
+                   :email-address       "jenny@jetpack.org"
+                   :residential-address "42 meaning of life street"
+                   :postal-code         "AB3 0EF"
+                   :social-security-id  "123456789"}  )
 ;; => true
 
-(spec/valid? :practicalli.bank-account-spec/customer-details
-             {::first-name          "Jenny"
-              ::last-name           "Jetpack"
-              ::email-address       "jenny@jetpack.org"
-              ::residential-address "42 meaning of life street"
-              ::postal-code         "AB3 0EF"
-              ::social-security-id  "123456789"}  )
+
+  ;; only works in the practicalli.bank-account-spec namespace
+  (spec/explain ::customer-details
+                {::first-name          "Jenny"
+                 ::last-name           "Jetpack"
+                 ::email-address       "jenny@jetpack.org"
+                 ::residential-address "42 meaning of life street"
+                 ::postal-code         "AB3 0EF"
+                 ::social-security-id  "123456789"}  )
+;; => nil
+
+
+  (spec/valid? ::account-holdera
+               #:practicalli.bank-account-spec
+               {:first-name          "Jenny"
+                :last-name           "Jetpack"
+                :email-address       "jenny@jetpack.org"
+                :residential-address "42 meaning of life street, Earth"
+                :postal-code         "AB3 0EF"
+                :social-security-id  "123456789"
+                :account-id          (java.util.UUID/randomUUID)}
+               )
+  ;; => false
+  ;; customer-details should be a key of account holder and values should be a nested map of the customer details
+
+  (spec/valid? ::account-holder
+               #:practicalli.bank-account-spec
+               {:account-id       (java.util.UUID/randomUUID)
+                :customer-details {:first-name          "Jenny"
+                                   :last-name           "Jetpack"
+                                   :email-address       "jenny@jetpack.org"
+                                   :residential-address "42 meaning of life street, Earth"
+                                   :postal-code         "AB3 0EF"
+                                   :social-security-id  "123456789"}})
+;; => false
+
+  ;; need to qualify the customer details hash-map
+  (spec/explain ::account-holder
+                #:practicalli.bank-account-spec
+                {:account-id       (java.util.UUID/randomUUID)
+                 :customer-details {:first-name          "Jenny"
+                                    :last-name           "Jetpack"
+                                    :email-address       "jenny@jetpack.org"
+                                    :residential-address "42 meaning of life street, Earth"
+                                    :postal-code         "AB3 0EF"
+                                    :social-security-id  "123456789"}})
+
+  (spec/valid? ::account-holder
+               #::{:account-id       (java.util.UUID/randomUUID)
+                   :customer-details #:: {:first-name          "Jenny"
+                                          :last-name           "Jetpack"
+                                          :email-address       "jenny@jetpack.org"
+                                          :residential-address "42 meaning of life street, Earth"
+                                          :postal-code         "AB3 0EF"
+                                          :social-security-id  "123456789"
+                                          }})
 ;; => true
 
-(spec/valid? :practicalli.bank-account-spec/customer-details
-             #::{:first-name          "Jenny"
-                 :last-name           "Jetpack"
-                 :email-address       "jenny@jetpack.org"
-                 :residential-address "42 meaning of life street"
-                 :postal-code         "AB3 0EF"
-                 :social-security-id  "123456789"}  )
+  (spec/explain ::account-holder
+                #::{:account-id       (java.util.UUID/randomUUID)
+                    :customer-details #:: {:first-name          "Jenny"
+                                           :last-name           "Jetpack"
+                                           :email-address       "jenny@jetpack.org"
+                                           :residential-address "42 meaning of life street, Earth"
+                                           :postal-code         "AB3 0EF"
+                                           :social-security-id  "123456789"
+                                           }})
+;; => Success (in REPL buffer)
 
 
-(spec/explain :practicalli.bank-account-spec/customer-details
-              {::first-name          "Jenny"
-               ::last-name           "Jetpack"
-               ::email-address       "jenny@jetpack.org"
-               ::residential-address "42 meaning of life street"
-               ::postal-code         "AB3 0EF"
-               ::social-security-id  "123456789"}  )
-;; Success!
+
+  ) ;; End of comment
