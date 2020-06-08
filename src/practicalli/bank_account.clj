@@ -15,7 +15,10 @@
   Return:
   - hash-map of an account-holder (adds account id)"
   [customer-details]
-  (assoc customer-details :account-id (java.util.UUID/randomUUID)))
+
+  (assoc customer-details
+         :practicalli.bank-account-spec/account-id
+         (java.util.UUID/randomUUID)))
 
 
 
