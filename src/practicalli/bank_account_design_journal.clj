@@ -1,7 +1,9 @@
 (ns practicalli.bank-account-design-journal
-  (:require [clojure.spec.alpha :as spec]
-            [clojure.spec.test.alpha :as spec-test]
-            [practicalli.bank-account]))
+  (:require
+   [clojure.test :refer [deftest is testing]]
+   [clojure.spec.alpha :as spec]
+   [clojure.spec.test.alpha :as spec-test]
+   [practicalli.bank-account]))
 
 
 ;; Functions for the online banking system
