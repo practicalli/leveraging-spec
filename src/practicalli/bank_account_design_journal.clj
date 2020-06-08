@@ -146,10 +146,12 @@
 ;; Use a specific customer-details specification
 ;; which will be a required part of the account holder details
 
-(spec/def ::customer-details map?)
+;; Customer details is a map, so the specification could just use the map? predicate
+#_(spec/def ::customer-details map?)
 
-;; The bank legally requires specific information about a customer
+;; However, the bank legally requires specific information about a customer
 ;; in order to add them as an account holder
+;; so there is value in defining a specification for each part of the customer details hash-map
 
 (spec/def ::first-name string?)
 (spec/def ::last-name string?)
@@ -160,82 +162,246 @@
             #(re-matches #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$"
                          %)))
 
-;; These specs are not very useful - refactor
+;; A residential address is usually made of several pieces of information
+;; so this could be a composite specification in future
+;; Initially it is just a string of the whole address
 (spec/def ::residential-address string?)
-(spec/def ::social-secuirty-id string?)
 
-;; NOTE: https://github.com/nikortel/ssn is a library for
-;; social-security number validation and generation via spec
-;; HACK: project not on clojars, so could just be copied into project as a separate library
-
+;; A social security number specification is also a candidate for a composite specification
 ;; Social security numbers may take different forms
 ;; and even have different names in different countries
 ;; eg. USA - SSN
 ;;  a nine-digit number in the format "AAA-GG-SSSS"
 ;; https://en.wikipedia.org/wiki/Social_Security_number
 
-(spec/def ::social-secuirty-id-usa string?)
+(spec/def ::social-security-id-usa
+  (spec/and string?
+            #(= 11 (count %))))
+
+;; NOTE: https://github.com/nikortel/ssn is a library for USA specific
+;; social-security number validation and generation via spec
+;; HACK: project not on clojars, so could just be copied into project as a separate library
 
 ;; eg. UK - National Insurance QQ123456C
 ;; https://en.wikipedia.org/wiki/National_Insurance_number
 
-(spec/def ::social-secuirty-id-uk string?)
-
-;; Social Security ID then can be one of these
-(spec/def ::social-secuirty-id (or ::social-secuirty-id-uk
-                                   ::social-secuirty-id-usa))
+(spec/def ::social-security-id-uk string?)
 
 
-;; Putting that all together
-
-(spec/def ::customer-details
-  (spec/and
-    map?
-    (spec/keys
-      :req [::first-name ::last-name ::email-address ::home-address ::social-secuirty-id])))
+;; Social Security ID specification then can be one of any of the country specific specifications
+(spec/def ::social-security-id (or ::social-security-id-uk
+                                   ::social-security-id-usa))
 
 
-;; However, keys macro makes explicitly checking for a hash map redundant
+;; Composing the customer details specification
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; A customer details specification is a hash-map of key value pairs,
+;; The keys are the specifications that have just been defined.
+
+;; Using `spec/keys` a specification is defined as a map with required and optional keys
+#_(spec/def ::customer-details
+    (spec/and
+      map?
+      (spec/keys
+        :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id])))
+
+
+;; The `spec/keys` macro makes explicitly checking for a hash map redundant
 (spec/def ::customer-details
   (spec/keys
-    :req [::first-name ::last-name ::email-address ::home-address ::social-secuirty-id]))
+    :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
 
 
+;; Validating the customer details specifications
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Check an example hash-map from our test conforms to the specification
+
+(spec/conform ::customer-details
+              {:first-name          "Jenny"
+               :last-name           "Jetpack"
+               :email-address       "jenny@jetpack.org"
+               :residential-address "42 meaning of life street"
+               :postal-code         "AB3 0EF"
+               :social-security-id  "123456789"})
+;; => :clojure.spec.alpha/invalid
+
+;; So the mock test data does not confirm to the specifications
+;; even though it has all the same keys as the map in the specification
+
+(spec/valid? ::customer-details
+             {:first-name          "Jenny"
+              :last-name           "Jetpack"
+              :email-address       "jenny@jetpack.org"
+              :residential-address "42 meaning of life street"
+              :postal-code         "AB3 0EF"
+              :social-security-id  "123456789"})
+;; => false
+
+
+;; `spec/explain` will provide more information to help diagnose the issue
+
+(spec/explain ::customer-details
+              {:first-name          "Jenny"
+               :last-name           "Jetpack"
+               :email-address       "jenny@jetpack.org"
+               :residential-address "42 meaning of life street"
+               :postal-code         "AB3 0EF"
+               :social-security-id  "123456789"})
+
+;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
+;; - failed: (contains? % :practicalli.bank-account-design-journal/first-name) spec: :practicalli.bank-account-design-journal/customer-details
+;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
+;; - failed: (contains? % :practicalli.bank-account-design-journal/last-name) spec: :practicalli.bank-account-design-journal/customer-details
+;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
+;; - failed: (contains? % :practicalli.bank-account-design-journal/email-address) spec: :practicalli.bank-account-design-journal/customer-details
+;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
+;; - failed: (contains? % :practicalli.bank-account-design-journal/residential-address) spec: :practicalli.bank-account-design-journal/customer-details
+;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
+;; - failed: (contains? % :practicalli.bank-account-design-journal/social-security-id) spec: :practicalli.bank-account-design-journal/customer-details
+
+
+;; The `::customer-details` spec is given a map with unqualified keys
+;; and is failing the `:req` part of the `spec/keys` part of the specification
+
+
+;; Changing spec/keys to use unqualified keys
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; `spec/keys` has an unqualified version which will
+;; allow you to use unqualified keys with specifications
+
+;; Using qualified keywords in the map works in the relevant namespace
+
+;; update the ::customer-details spec to use :req-un
+
+(spec/def ::customer-details
+  (spec/keys
+    :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
+
+
+;; Now the following will work from any namespace
+(spec/valid? ::customer-details
+             {:first-name          "Jenny"
+              :last-name           "Jetpack"
+              :email-address       "jenny@jetpack.org"
+              :residential-address "42 meaning of life street"
+              :postal-code         "AB3 0EF"
+              :social-security-id  "123456789"})
+;; => true
+
+
+(spec/valid? ::customer-details
+             {::first-name          "Jenny"
+              ::last-name           "Jetpack"
+              ::email-address       "jenny@jetpack.org"
+              ::residential-address "42 meaning of life street"
+              ::postal-code         "AB3 0EF"
+              ::social-security-id  "123456789"})
+;; => false
+
+;; FAIL: using unqualified keys means that qualified keys will fail :()
+;; so its an either or situation (unless there is another approach)
+
+
+;; Qualifying keys with auto-resolve macro
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; The auto-resolve macro will add the current namespace to all the keys in a hash-map
+
+;; Change the `::customer-details` specification to use qualified keys again
+
+(spec/def ::customer-details
+  (spec/keys
+    :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
+
+
+(spec/conform ::customer-details
+              #::{:first-name          "Jenny"
+                  :last-name           "Jetpack"
+                  :email-address       "jenny@jetpack.org"
+                  :residential-address "42 meaning of life street"
+                  :postal-code         "AB3 0EF"
+                  :social-security-id  "123456789"}  )
+;; => #:practicalli.bank-account-design-journal{:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
+
+(spec/valid? ::customer-details
+             #::{:first-name          "Jenny"
+                 :last-name           "Jetpack"
+                 :email-address       "jenny@jetpack.org"
+                 :residential-address "42 meaning of life street"
+                 :postal-code         "AB3 0EF"
+                 :social-security-id  "123456789"}  )
+;; => true
+
+
+;; HACK: use both `req` and `:req-un` versions of `spec/keys` for all the keys wrapped with `spec/or`.
+;; However, this fails to compile.
+
+#_(spec/def ::customer-details
+    (spec/or (spec/keys
+               :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id])
+             (spec/keys
+               :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id])))
 
 
 
 ;; Create spec for account-holder
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; This can use the custom details
-;; and add specific information created when a customer is registered with the bank
+;; The account holder has the same information as custom details
+;; with the addition of an account-id
+
+;; In the register-account-holder a uuid is generated for the account id
+;; So a spec can be defined for this type
 
 (spec/def ::account-id uuid?)
 
-;; Or their could be a specific format the bank uses for customer id's
 
-(defn super-secret-customer-id
-  [customer-details]
-  (java.util.UUID/randomUUID))
+;; There are several approaches to combining, depending on the shape of the data used
 
-(java.util.UUID/randomUUID)
-;; => #uuid "44f3ffd7-6702-4b8a-af25-11bee4b5ec4f"
+;; The account holder is a hash-map, so `spec/keys` will create the map from specification keys
 
-(type (java.util.UUID/randomUUID))
-;; => java.util.UUID
+;; Including the customer-details specification in `spec/keys`
+;; would include the customer details as a nested hash-map
 
-;; Test to see a value is a uuid
-
-(uuid? (java.util.UUID/randomUUID))
-;; => true
-
-(uuid? #uuid " ")
-;; Invalid uuid string
-
-;; Combine ::account-id with the ::customer-details spec to make ::account-holder spec
-
-(spec/def ::account-holder
+(spec/def ::account-holder-hierachy
   (spec/keys
     :req [::account-id ::customer-details]))
+
+
+;; A valid data structure for this specification is a map with two keys
+;; account-id and customer-details
+;; account-id is a uuid value
+;; customer-details is a hash-map of values that conform to the customer-details specification
+
+(spec/valid? ::account-holder-hierachy
+             #::{:account-id       (java.util.UUID/randomUUID)
+                 :customer-details #:: {:first-name          "Jenny"
+                                        :last-name           "Jetpack"
+                                        :email-address       "jenny@jetpack.org"
+                                        :residential-address "42 meaning of life street, Earth"
+                                        :postal-code         "AB3 0EF"
+                                        :social-security-id  "123456789"}})
+;; => true
+
+
+;; Flat data structures are usually preferred in Clojure over a nested hierarchy
+;; Rather than use the ::customer-details specification as a key in the `spec/keys` expression
+;; the individual specifications that make up ::customer-details can be used.
+
+(spec/def ::account-holder-composition
+  (spec/keys
+    :req [::account-id ::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
+
+
+(spec/valid? ::account-holder-composition
+             #::{:account-id          (java.util.UUID/randomUUID)
+                 :first-name          "Jenny"
+                 :last-name           "Jetpack"
+                 :email-address       "jenny@jetpack.org"
+                 :residential-address "42 meaning of life street, Earth"
+                 :postal-code         "AB3 0EF"
+                 :social-security-id  "123456789"})
+
 
 
 ;; Create a namespace to hold the specifications
@@ -246,107 +412,6 @@
 ;; The spec definitions can simply be copied to this namespace
 ;; and they will use that namespace as their base domain
 
-
-;; Validating specifications
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; The specification for customer details from practicalli.bank-account-spec namespace
-#_(spec/def ::customer-details
-    (spec/keys
-      :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
-
-(spec/conform :practicalli.bank-account-spec/customer-details
-              {:first-name          "Jenny"
-               :last-name           "Jetpack"
-               :email-address       "jenny@jetpack.org"
-               :residential-address "42 meaning of life street"
-               :postal-code         "AB3 0EF"
-               :social-security-id  "123456789"}  )
-;; => :clojure.spec.alpha/invalid
-
-(spec/explain :practicalli.bank-account-spec/customer-details
-              {:first-name          "Jenny"
-               :last-name           "Jetpack"
-               :email-address       "jenny@jetpack.org"
-               :residential-address "42 meaning of life street"
-               :postal-code         "AB3 0EF"
-               :social-security-id  "123456789"}  )
-
-;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id"123456789"}
-;; - failed: (contains? % :practicalli.bank-account-spec/first-name) spec: :practicalli.bank-account-spec/customer-details
-;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id"123456789"}
-;; - failed: (contains? % :practicalli.bank-account-spec/last-name) spec: :practicalli.bank-account-spec/customer-details
-;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id"123456789"}
-;; - failed: (contains? % :practicalli.bank-account-spec/email-address) spec: :practicalli.bank-account-spec/customer-details
-;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
-;; - failed: (contains? % :practicalli.bank-account-spec/residential-address) spec: :practicalli.bank-account-spec/customer-details
-;; {:first-name "Jenny", :last-name "Jetpack", :email-address "jenny@jetpack.org", :residential-address "42 meaning of life street", :postal-code "AB3 0EF", :social-security-id "123456789"}
-;; - failed: (contains? % :practicalli.bank-account-spec/social-security-id) spec: :practicalli.bank-account-spec/customer-details
-
-
-
-;; Using qualified keywords in the map works in the relevant namespace
-;; the following works in the practicalli.bank-account-spec namespace
-
-(spec/explain :practicalli.bank-account-spec/customer-details
-              {::first-name            "Jenny"
-               ::last-name             "Jetpack"
-               ::email-address         "jenny@jetpack.org"
-               ::residential-address   "42 meaning of life street"
-               ::postal-code           "AB3 0EF"
-               ::social-security-id-uk "123456789"}  )
-
-
-;; Changing spec/keys to use unqualified keys
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; spec/keys has an unqualified version which will
-;; allow you to connect unqualified keys to specs
-
-;; update the ::customer-details spec to use :req-un
-(spec/def ::customer-details
-  (spec/keys
-    :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id]))
-
-
-;; Now the following will work from any namespace
-(spec/explain :practicalli.bank-account-spec/customer-details
-              {:first-name            "Jenny"
-               :last-name             "Jetpack"
-               :email-address         "jenny@jetpack.org"
-               :residential-address   "42 meaning of life street"
-               :postal-code           "AB3 0EF"
-               :social-security-id-uk "123456789"}  )
-
-
-;; FAIL: using unqualified keys means that qualified keys will fail :()
-;; so its an either or situation (unless there is another approach)
-
-;; The auto-resolve macro can be used
-
-(spec/explain :practicalli.bank-account-spec/customer-details
-              #::{:first-name          "Jenny"
-                  :last-name           "Jetpack"
-                  :email-address       "jenny@jetpack.org"
-                  :residential-address "42 meaning of life street"
-                  :postal-code         "AB3 0EF"
-                  :social-security-id  "123456789"}  )
-
-(spec/explain :practicalli.bank-account-spec/customer-details
-              #:practicalli.bank-account-spec
-              {:first-name          "Jenny"
-               :last-name           "Jetpack"
-               :email-address       "jenny@jetpack.org"
-               :residential-address "42 meaning of life street"
-               :postal-code         "AB3 0EF"
-               :social-security-id  "123456789"}  )
-
-
-;; Or what seems to be more hacky is to have both `req` and `:req-un` in the spec/keys
-(spec/def ::customer-details
-  (or (spec/keys
-        :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id])
-      (spec/keys
-        :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id])))
 
 
 ;; Create a spec fdef for the register-account-holder function
