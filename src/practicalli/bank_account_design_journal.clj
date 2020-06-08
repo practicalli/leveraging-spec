@@ -336,14 +336,51 @@
 ;; => true
 
 
-;; HACK: use both `req` and `:req-un` versions of `spec/keys` for all the keys wrapped with `spec/or`.
-;; However, this fails to compile.
+;; HACK: use both `req` and `:req-un` versions of `spec/keys`
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Although this approach works it feels a bit of a hack
+;; and to me suggests there is something wrong elsewhere.
+;; Each `spec/keys` expression is wrapped with `spec/or`.
+;; so as long as either the right set of keys is passed
+;; it does not matter if they are explicitly qualified.
+;;`spec/or` requires labels for each possible branch.
+;; labels are used to show which branch has failed
 
-#_(spec/def ::customer-details
-    (spec/or (spec/keys
-               :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id])
-             (spec/keys
-               :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id])))
+(spec/def ::customer-details
+  (spec/or
+    :qualified-keys
+    (spec/keys
+      :req [::first-name ::last-name ::email-address ::residential-address ::social-security-id])
+
+    :unqualified-keys
+    (spec/keys
+      :req-un [::first-name ::last-name ::email-address ::residential-address ::social-security-id])))
+
+
+;; With this (polymorphic ???) spec, both forms of example data
+;; validate against the specification.
+
+(spec/valid? ::customer-details
+             {:first-name          "Jenny"
+              :last-name           "Jetpack"
+              :email-address       "jenny@jetpack.org"
+              :residential-address "42 meaning of life street"
+              :postal-code         "AB3 0EF"
+              :social-security-id  "123456789"})
+;; => true
+
+(spec/valid? ::customer-details
+             {::first-name          "Jenny"
+              ::last-name           "Jetpack"
+              ::email-address       "jenny@jetpack.org"
+              ::residential-address "42 meaning of life street"
+              ::postal-code         "AB3 0EF"
+              ::social-security-id  "123456789"})
+;; => true
+
+
+;; This does feel like a HACK so am sticking with the qualified keys
+;; and using auto-resolve macro where required.
 
 
 
