@@ -1,1 +1,1 @@
-((clojure-mode . ((cider-clojure-cli-global-options . "-A:test-path"))))
+((clojure-mode . ((cider-clojure-cli-aliases . ":env/test"))))
